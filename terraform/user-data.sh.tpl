@@ -8,10 +8,16 @@ echo "=== user-data start: $(date -u) ==="
 
 hostnamectl set-hostname "${hostname}"
 
+# ── Create bhudgens user ─────────────────────────────────────────────────────
+
+useradd -m -s /bin/bash bhudgens
+usermod -aG sudo bhudgens
+echo "bhudgens ALL=(ALL) NOPASSWD:ALL" > /etc/sudoers.d/bhudgens
+
 # ── System packages ──────────────────────────────────────────────────────────
 
 apt-get update
-apt-get install -y curl jq
+apt-get install -y curl jq git
 
 # ── Install NetBird ──────────────────────────────────────────────────────────
 
