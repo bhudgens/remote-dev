@@ -82,7 +82,7 @@ get_peer_ip() {
 
     local ip
     ip=$("$netbird_exe" status --detail 2>/dev/null \
-        | grep -B1 "$peer_name" \
+        | grep -A1 "$peer_name" \
         | grep -oP 'NetBird IP:\s*\K[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+' \
         | head -1) || true
 
