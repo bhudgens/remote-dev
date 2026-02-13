@@ -1,0 +1,23 @@
+# Terraform
+terraform/.terraform/
+terraform/*.tfstate
+terraform/*.tfstate.backup
+terraform/*.tfplan
+terraform/.terraform.lock.hcl
+
+# Terraform variable files (may contain secrets)
+terraform/*.tfvars
+terraform/*.tfvars.json
+!terraform/terraform.tfvars.example
+
+# Editor
+*.swp
+*.swo
+*~
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+*:Zone.Identifier
