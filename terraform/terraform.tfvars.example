@@ -1,0 +1,14 @@
+# Copy to terraform.tfvars and fill in your values
+# terraform.tfvars is git-ignored and will not be committed
+
+instance_type          = "t3.medium"
+netbird_setup_key      = ""  # Get from NetBird dashboard
+netbird_management_url = ""  # e.g. "https://api.netbird.io:443"
+
+# Optional: SSH key pair for emergency access
+# key_name = "your-ssh-key"
+
+# Optional: Allow inbound SSH from specific IPs
+# allowed_ssh_cidr = ["1.2.3.4/32"]
+
+# root_volume_size = 30
