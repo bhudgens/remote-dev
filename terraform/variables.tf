@@ -1,3 +1,27 @@
+variable "aws_region" {
+  description = "AWS region"
+  type        = string
+  default     = "us-east-1"
+}
+
+variable "vpc_name" {
+  description = "Name tag of the VPC to deploy into"
+  type        = string
+  default     = "cloud-development-vpc"
+}
+
+variable "subnet_name" {
+  description = "Name tag of the subnet to deploy into"
+  type        = string
+  default     = "cloud-development-public"
+}
+
+variable "instance_name" {
+  description = "Name for the instance (used for EC2 tag and hostname)"
+  type        = string
+  default     = "cloud-development"
+}
+
 variable "instance_type" {
   description = "EC2 instance type"
   type        = string
@@ -16,9 +40,9 @@ variable "netbird_management_url" {
 }
 
 variable "key_name" {
-  description = "SSH key pair name for emergency access (optional)"
+  description = "SSH key pair name for emergency access"
   type        = string
-  default     = null
+  default     = "remote-dev-key"
 }
 
 variable "allowed_ssh_cidr" {

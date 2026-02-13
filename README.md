@@ -1,109 +1,104 @@
 # remote-dev
 
-Remote AI development platform. AI tools run on a remote Ubuntu EC2 instance and control a local Windows Chrome browser via the Chrome DevTools Protocol (CDP) over a private NetBird network.
+Run AI tools on a remote Ubuntu EC2 instance, controlling a local Windows Chrome browser via CDP over a private NetBird mesh.
 
 ```
-Remote Ubuntu EC2 (AI + automation)
+Windows Workstation (Chrome on localhost:9222)
+        |
+        |  reverse SSH tunnel (-R 9222)
         |
         |  NetBird (WireGuard mesh)
         |
-Windows Workstation (Chrome w/ CDP)
+Remote EC2 (AI + automation sees CDP at localhost:9222)
 ```
 
-Compute remote. Render local.
+All tunnels are initiated from the workstation. The EC2 never connects back.
 
 ## Prerequisites
 
-- Windows workstation with Chrome and NetBird installed
+- Windows workstation with Chrome and NetBird
 - WSL2 (Ubuntu) on the workstation
-- Self-hosted NetBird management server with a setup key
-- AWS account with Terraform installed locally
-- [Granted](https://granted.dev) for AWS SSO credential management
+- Self-hosted NetBird management server
+- AWS account with OpenTofu installed locally
 
-## Quick Start
+## Setup
 
-### 1. Provision the EC2 instance
+### 1. Deploy the EC2
 
 ```bash
 cd terraform
 cp terraform.tfvars.example terraform.tfvars
 # Fill in netbird_setup_key and netbird_management_url
-terraform init && terraform apply
+tofu init && tofu apply
 ```
 
-The instance boots with NetBird auto-registered to your mesh.
+The instance boots with NetBird registered and SSH server enabled.
 
-### 2. Set up Windows Firewall (one-time, from WSL2)
-
-Run from an elevated (Administrator) WSL2 terminal:
-
-```bash
-./scripts/wsl/firewall-setup.sh
-```
-
-Creates an inbound allow rule for TCP 9222 scoped to the NetBird interface only.
-
-### 3. Launch Chrome (from WSL2)
+### 2. Launch Chrome (WSL2)
 
 ```bash
 ./scripts/wsl/chrome-launch.sh
 ```
 
-Discovers your NetBird IP and launches Chrome bound to it — not `0.0.0.0`. A separate automation profile is used so your normal browsing is unaffected.
+Opens Chrome with CDP on localhost:9222 using a separate automation profile.
 
-### 4. Connect from the remote server
-
-SSH to the EC2 instance via NetBird, then:
+### 3. Start the tunnel (WSL2)
 
 ```bash
-source scripts/remote/cdp-env.sh <WINDOWS_NETBIRD_IP>
+./scripts/wsl/tunnel-start.sh
 ```
 
-This exports `CHROME_CDP_URL` and `BROWSER_WS_ENDPOINT` for use by Playwright, Puppeteer, or any AI agent framework.
+Creates a reverse SSH tunnel so the EC2 can reach your Chrome at its own localhost:9222.
+
+### 4. Use from the EC2
+
+```bash
+source scripts/remote/cdp-env.sh
+```
+
+Exports `CHROME_CDP_URL` and `BROWSER_WS_ENDPOINT` for Playwright, Puppeteer, or any automation tool.
+
+### 5. Check status
+
+```bash
+# From WSL2 — full dashboard
+./scripts/wsl/status.sh
+
+# From EC2 — CDP health check
+./scripts/remote/cdp-health.sh
+```
+
+### 6. Tear down
+
+```bash
+./scripts/wsl/tunnel-stop.sh    # stop tunnel
+./scripts/wsl/chrome-stop.sh    # stop Chrome
+```
 
 ## Scripts
 
-### WSL2 (run from your workstation)
+### WSL2 (workstation)
 
 | Script | Purpose |
 |--------|---------|
-| `scripts/wsl/chrome-launch.sh [port]` | Launch Chrome with CDP bound to NetBird IP |
-| `scripts/wsl/chrome-stop.sh` | Stop the automation Chrome instance |
-| `scripts/wsl/firewall-setup.sh [port]` | One-time Windows Firewall rule setup |
-| `scripts/wsl/status.sh [port]` | Dashboard: NetBird, Chrome, and CDP status |
+| `chrome-launch.sh` | Start Chrome with CDP on localhost |
+| `chrome-stop.sh` | Stop automation Chrome |
+| `tunnel-start.sh [ec2_ip]` | Reverse tunnel to EC2 (auto-discovers cloud-development peer) |
+| `tunnel-stop.sh` | Stop the tunnel |
+| `status.sh` | Dashboard: NetBird, Chrome, CDP, tunnel |
 
-### Remote (run on the EC2 instance)
+### Remote (EC2)
 
 | Script | Purpose |
 |--------|---------|
-| `scripts/remote/cdp-env.sh <ip>` | Source to export CDP env vars for AI tools |
-| `scripts/remote/cdp-health.sh <ip> [port]` | Layered health check (network, HTTP, WebSocket) |
-
-### Shared
-
-| File | Purpose |
-|------|---------|
-| `scripts/config.env` | Chrome path, CDP port, NetBird executable path |
-| `scripts/lib.sh` | Shared functions (NetBird IP discovery, CDP checks) |
+| `cdp-env.sh` | Source to export CDP env vars |
+| `cdp-health.sh` | Verify CDP connectivity through tunnel |
 
 ## Security
 
-- Chrome binds to the NetBird interface IP only (never `0.0.0.0`)
-- CDP port is accessible only over the NetBird WireGuard mesh
-- Windows Firewall rule is scoped to the NetBird network adapter
-- EC2 security group allows no inbound traffic by default
+- Chrome binds to localhost only
+- CDP is only reachable through the SSH tunnel over NetBird
+- EC2 security group allows no inbound traffic
 - NetBird setup key is marked `sensitive` in Terraform
 
-CDP provides unauthenticated root-level browser access. The security model relies entirely on NetBird network isolation. Do not expose CDP to any other network.
-
-## Terraform Variables
-
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `instance_type` | `t3.medium` | EC2 instance type |
-| `netbird_setup_key` | (required) | NetBird peer registration key |
-| `netbird_management_url` | (required) | Self-hosted NetBird management URL |
-| `key_name` | `null` | SSH key pair for emergency access |
-| `allowed_ssh_cidr` | `[]` | CIDRs allowed for inbound SSH |
-| `root_volume_size` | `30` | Root EBS volume size in GB |
-| `tags` | `{ Project = "remote-dev" }` | Resource tags |
+CDP provides unauthenticated browser access. Security relies on NetBird network isolation and SSH tunnel encryption.

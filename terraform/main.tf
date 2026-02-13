@@ -2,11 +2,11 @@
 
 resource "aws_security_group" "remote_dev" {
   name_prefix = "remote-dev-"
-  description = "Remote dev instance — egress only, no inbound by default"
-  vpc_id      = data.aws_vpc.default.id
+  description = "Remote dev instance - egress only, no inbound by default"
+  vpc_id      = data.aws_vpc.netbird.id
 
   tags = merge(var.tags, {
-    Name = "remote-dev"
+    Name = var.instance_name
   })
 }
 
@@ -36,14 +36,19 @@ resource "aws_instance" "remote_dev" {
   ami           = data.aws_ami.ubuntu.id
   instance_type = var.instance_type
   key_name      = var.key_name
-  subnet_id     = data.aws_subnets.default.ids[0]
+  subnet_id     = data.aws_subnet.netbird.id
+
+  associate_public_ip_address = true
 
   vpc_security_group_ids = [aws_security_group.remote_dev.id]
 
   user_data = templatefile("${path.module}/user-data.sh.tpl", {
     setup_key      = var.netbird_setup_key
     management_url = var.netbird_management_url
+    hostname       = var.instance_name
   })
+
+  user_data_replace_on_change = true
 
   metadata_options {
     http_endpoint               = "enabled"
@@ -57,6 +62,6 @@ resource "aws_instance" "remote_dev" {
   }
 
   tags = merge(var.tags, {
-    Name = "remote-dev"
+    Name = var.instance_name
   })
 }

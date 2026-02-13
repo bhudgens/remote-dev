@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
-# Launch Chrome with CDP bound to the local NetBird IP.
-# Run from WSL2. Chrome opens on Windows, accessible only via NetBird overlay.
+# Launch Chrome with CDP on localhost.
+# Run from WSL2. Chrome opens on Windows, CDP accessible at 127.0.0.1:<port>.
+# Remote machines reach CDP via SSH tunnel through the NetBird mesh.
 #
 # Usage: chrome-launch.sh [cdp_port]
 
@@ -22,12 +23,6 @@ if powershell.exe -NoProfile -Command \
     exit 1
 fi
 
-# ── Discover NetBird IP ──────────────────────────────────────────────────────
-
-log_info "Discovering NetBird IP..."
-NETBIRD_IP=$(get_netbird_ip) || exit 1
-log_info "NetBird IP: $NETBIRD_IP"
-
 # ── Resolve Windows paths ───────────────────────────────────────────────────
 
 log_info "Resolving Windows LOCALAPPDATA..."
@@ -37,11 +32,10 @@ log_info "Chrome user data dir: $USER_DATA_PATH"
 
 # ── Launch Chrome ────────────────────────────────────────────────────────────
 
-log_info "Launching Chrome (CDP on ${NETBIRD_IP}:${CDP_PORT})..."
+log_info "Launching Chrome (CDP on 127.0.0.1:${CDP_PORT})..."
 
 "$CHROME_PATH" \
     --remote-debugging-port="$CDP_PORT" \
-    --remote-debugging-address="$NETBIRD_IP" \
     --user-data-dir="$USER_DATA_PATH" \
     --no-first-run \
     --no-default-browser-check &
@@ -51,14 +45,14 @@ log_info "Launching Chrome (CDP on ${NETBIRD_IP}:${CDP_PORT})..."
 log_info "Waiting for CDP endpoint..."
 MAX_WAIT=10
 for i in $(seq 1 "$MAX_WAIT"); do
-    if check_cdp_responding "$NETBIRD_IP" "$CDP_PORT"; then
+    if check_cdp_responding "127.0.0.1" "$CDP_PORT"; then
         echo ""
         log_info "Chrome DevTools Protocol is ready"
-        log_info "  CDP HTTP : http://${NETBIRD_IP}:${CDP_PORT}"
-        log_info "  CDP JSON : http://${NETBIRD_IP}:${CDP_PORT}/json/version"
+        log_info "  CDP HTTP : http://127.0.0.1:${CDP_PORT}"
+        log_info "  CDP JSON : http://127.0.0.1:${CDP_PORT}/json/version"
 
-        WS_URL=$(get_cdp_ws_url "$NETBIRD_IP" "$CDP_PORT" 2>/dev/null) && \
-            log_info "  CDP WS   : $WS_URL"
+        NETBIRD_IP=$(get_netbird_ip 2>/dev/null) && \
+            log_info "  NetBird  : $NETBIRD_IP (remote machines tunnel via SSH)"
 
         exit 0
     fi
@@ -67,6 +61,5 @@ for i in $(seq 1 "$MAX_WAIT"); do
 done
 
 echo ""
-log_error "CDP did not respond within ${MAX_WAIT}s at ${NETBIRD_IP}:${CDP_PORT}"
-log_error "Check that Windows Firewall allows inbound TCP ${CDP_PORT} on the NetBird interface"
+log_error "CDP did not respond within ${MAX_WAIT}s at 127.0.0.1:${CDP_PORT}"
 exit 1

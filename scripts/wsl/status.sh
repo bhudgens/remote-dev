@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Dashboard: Show status of NetBird, Chrome automation, and CDP connectivity.
+# Dashboard: Show status of NetBird, Chrome automation, CDP, and tunnel.
 # Run from WSL2.
 #
 # Usage: status.sh [cdp_port]
@@ -28,7 +28,6 @@ NETBIRD_IP=$(get_netbird_ip 2>/dev/null) && {
     NETBIRD_IP=""
 }
 
-# Show connected peers
 if [[ -n "$NETBIRD_IP" ]]; then
     PEER_COUNT=$("${NETBIRD_EXE:-/mnt/c/Program Files/NetBird/netbird.exe}" status 2>/dev/null \
         | grep -c "Connected" || echo "0")
@@ -53,28 +52,36 @@ fi
 
 echo ""
 
-# ── CDP Endpoint ─────────────────────────────────────────────────────────────
+# ── CDP Endpoint (localhost) ─────────────────────────────────────────────────
 
 printf "%-20s" "CDP Endpoint:"
 
-if [[ -z "$NETBIRD_IP" ]]; then
-    echo "SKIPPED  (NetBird not connected)"
-elif [[ "$CHROME_RUNNING" == "0" ]]; then
+if [[ "$CHROME_RUNNING" == "0" ]]; then
     echo "SKIPPED  (Chrome not running)"
-elif check_cdp_responding "$NETBIRD_IP" "$CDP_PORT"; then
-    echo "Responding  (http://${NETBIRD_IP}:${CDP_PORT})"
+elif check_cdp_responding "127.0.0.1" "$CDP_PORT"; then
+    echo "Responding  (http://127.0.0.1:${CDP_PORT})"
 
-    WS_URL=$(get_cdp_ws_url "$NETBIRD_IP" "$CDP_PORT" 2>/dev/null) && {
-        printf "%-20s%s\n" "" "WS: $WS_URL"
-    }
-
-    # Show open tabs
-    TAB_COUNT=$(curl -sf --max-time 2 "http://${NETBIRD_IP}:${CDP_PORT}/json" 2>/dev/null \
+    TAB_COUNT=$(curl -sf --max-time 2 "http://127.0.0.1:${CDP_PORT}/json" 2>/dev/null \
         | grep -c '"id"' || echo "0")
     printf "%-20s%s\n" "" "Open tabs: $TAB_COUNT"
 else
-    echo "NOT RESPONDING  (http://${NETBIRD_IP}:${CDP_PORT})"
-    echo "  Check: Windows Firewall rule for TCP $CDP_PORT on NetBird interface"
+    echo "NOT RESPONDING  (http://127.0.0.1:${CDP_PORT})"
+fi
+
+echo ""
+
+# ── Reverse SSH Tunnel ───────────────────────────────────────────────────────
+
+printf "%-20s" "Tunnel:"
+
+TUNNEL_PID=$(pgrep -f "ssh.*-R.*${CDP_PORT}:localhost:${CDP_PORT}" 2>/dev/null | head -1 || true)
+
+if [[ -n "$TUNNEL_PID" ]]; then
+    # Extract the target IP from the process command line
+    TUNNEL_TARGET=$(ps -p "$TUNNEL_PID" -o args= 2>/dev/null | grep -oP '\S+@\S+' || echo "unknown")
+    echo "Active  (PID: $TUNNEL_PID, target: $TUNNEL_TARGET)"
+else
+    echo "NOT RUNNING  (use tunnel-start.sh)"
 fi
 
 echo ""

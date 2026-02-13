@@ -1,13 +1,21 @@
-# Discover default VPC
-data "aws_vpc" "default" {
-  default = true
+# Look up existing VPC by Name tag
+data "aws_vpc" "netbird" {
+  filter {
+    name   = "tag:Name"
+    values = [var.vpc_name]
+  }
 }
 
-# Discover subnets in the default VPC
-data "aws_subnets" "default" {
+# Look up existing subnet by Name tag within the VPC
+data "aws_subnet" "netbird" {
+  filter {
+    name   = "tag:Name"
+    values = [var.subnet_name]
+  }
+
   filter {
     name   = "vpc-id"
-    values = [data.aws_vpc.default.id]
+    values = [data.aws_vpc.netbird.id]
   }
 }
 
