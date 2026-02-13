@@ -5,23 +5,15 @@ Run AI tools on a remote Ubuntu EC2, controlling your local Chrome browser via C
 ## Daily Use
 
 ```bash
-# Start everything (Chrome + tunnel)
-./scripts/wsl/start.sh
-
-# SSH to the EC2 and work
-ssh ubuntu@100.74.235.42
-
-# When done
-./scripts/wsl/stop.sh
+./scripts/wsl/start.sh       # launch Chrome + tunnel
+./scripts/wsl/ssh.sh          # SSH to the EC2
+./scripts/wsl/stop.sh         # tear down when done
 ```
-
-That's it. `start.sh` launches Chrome, creates a reverse SSH tunnel to the EC2, and shows status. The EC2 sees Chrome CDP at its own `localhost:9222`.
 
 On the EC2, load CDP env vars for automation tools:
 
 ```bash
 source scripts/remote/cdp-env.sh
-# Now CHROME_CDP_URL and BROWSER_WS_ENDPOINT are set
 ```
 
 ## How It Works
@@ -72,11 +64,8 @@ netbird status --detail | grep cloud-development
 |--------|---------|
 | `start.sh` | Launch Chrome + tunnel (daily driver) |
 | `stop.sh` | Stop tunnel + Chrome |
+| `ssh.sh` | SSH to the EC2 (auto-discovers IP) |
 | `status.sh` | Dashboard: NetBird, Chrome, CDP, tunnel |
-| `chrome-launch.sh` | Start Chrome with CDP on localhost |
-| `chrome-stop.sh` | Stop automation Chrome |
-| `tunnel-start.sh [ip]` | Reverse tunnel to EC2 |
-| `tunnel-stop.sh` | Stop the tunnel |
 
 ### Remote (EC2)
 

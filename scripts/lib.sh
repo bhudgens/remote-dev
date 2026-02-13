@@ -74,6 +74,26 @@ get_netbird_ip() {
     echo "$ip"
 }
 
+# Discover a NetBird peer's IP by name
+# Usage: get_peer_ip <peer_name>
+get_peer_ip() {
+    local peer_name="$1"
+    local netbird_exe="${NETBIRD_EXE:-/mnt/c/Program Files/NetBird/netbird.exe}"
+
+    local ip
+    ip=$("$netbird_exe" status --detail 2>/dev/null \
+        | grep -B1 "$peer_name" \
+        | grep -oP 'NetBird IP:\s*\K[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+' \
+        | head -1) || true
+
+    if [[ -z "$ip" ]]; then
+        log_error "Could not find peer '$peer_name' in NetBird mesh"
+        return 1
+    fi
+
+    echo "$ip"
+}
+
 # ── Chrome / Windows Paths ───────────────────────────────────────────────────
 
 # Resolve Windows %LOCALAPPDATA% from WSL2

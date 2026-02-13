@@ -13,24 +13,15 @@ source "$SCRIPT_DIR/../config.env"
 source "$SCRIPT_DIR/../lib.sh"
 
 EC2_IP="${1:-}"
-SSH_USER="${2:-ubuntu}"
+SSH_USER="${2:-$EC2_SSH_USER}"
 CDP_PORT="${CDP_PORT:-9222}"
 
 # ── Discover EC2 NetBird IP if not provided ──────────────────────────────────
 
 if [[ -z "$EC2_IP" ]]; then
-    log_info "Discovering cloud-development peer..."
-    EC2_IP=$("${NETBIRD_EXE}" status --detail 2>/dev/null \
-        | grep -B1 "cloud-development" \
-        | grep -oP 'NetBird IP:\s*\K[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+' \
-        | head -1) || true
-
-    if [[ -z "$EC2_IP" ]]; then
-        log_error "Could not discover cloud-development peer. Provide the IP manually."
-        log_error "Usage: tunnel-start.sh <ec2_netbird_ip> [ssh_user]"
-        exit 1
-    fi
-    log_info "Found cloud-development at $EC2_IP"
+    log_info "Discovering $EC2_PEER_NAME peer..."
+    EC2_IP=$(get_peer_ip "$EC2_PEER_NAME") || exit 1
+    log_info "Found $EC2_PEER_NAME at $EC2_IP"
 fi
 
 # ── Check Chrome CDP is running locally ──────────────────────────────────────
