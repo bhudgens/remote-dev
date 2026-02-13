@@ -1,29 +1,51 @@
 # remote-dev
 
-Run AI tools on a remote Ubuntu EC2 instance, controlling a local Windows Chrome browser via CDP over a private NetBird mesh.
+Run AI tools on a remote Ubuntu EC2, controlling your local Chrome browser via CDP over a private NetBird mesh.
+
+## Daily Use
+
+```bash
+# Start everything (Chrome + tunnel)
+./scripts/wsl/start.sh
+
+# SSH to the EC2 and work
+ssh ubuntu@100.74.235.42
+
+# When done
+./scripts/wsl/stop.sh
+```
+
+That's it. `start.sh` launches Chrome, creates a reverse SSH tunnel to the EC2, and shows status. The EC2 sees Chrome CDP at its own `localhost:9222`.
+
+On the EC2, load CDP env vars for automation tools:
+
+```bash
+source scripts/remote/cdp-env.sh
+# Now CHROME_CDP_URL and BROWSER_WS_ENDPOINT are set
+```
+
+## How It Works
 
 ```
-Windows Workstation (Chrome on localhost:9222)
-        |
-        |  reverse SSH tunnel (-R 9222)
-        |
-        |  NetBird (WireGuard mesh)
-        |
-Remote EC2 (AI + automation sees CDP at localhost:9222)
+Windows Workstation                    Remote EC2
+  Chrome (localhost:9222)                AI / Playwright
+        |                                    |
+        +---- reverse SSH tunnel (-R) -------+
+              over NetBird WireGuard mesh
 ```
 
-All tunnels are initiated from the workstation. The EC2 never connects back.
+The workstation initiates all connections. The EC2 never connects back. Multiple workstations can each tunnel their own Chrome.
 
-## Prerequisites
+## First-Time Setup
 
-- Windows workstation with Chrome and NetBird
-- WSL2 (Ubuntu) on the workstation
-- Self-hosted NetBird management server
-- AWS account with OpenTofu installed locally
+### 1. Prerequisites
 
-## Setup
+- Windows workstation with Chrome and [NetBird](https://netbird.io)
+- WSL2 (Ubuntu)
+- AWS account
+- [OpenTofu](https://opentofu.org) installed
 
-### 1. Deploy the EC2
+### 2. Deploy the EC2
 
 ```bash
 cd terraform
@@ -32,47 +54,14 @@ cp terraform.tfvars.example terraform.tfvars
 tofu init && tofu apply
 ```
 
-The instance boots with NetBird registered and SSH server enabled.
+The instance boots with NetBird registered and its SSH server enabled.
 
-### 2. Launch Chrome (WSL2)
+### 3. Verify
 
-```bash
-./scripts/wsl/chrome-launch.sh
-```
-
-Opens Chrome with CDP on localhost:9222 using a separate automation profile.
-
-### 3. Start the tunnel (WSL2)
+Wait ~60s for the EC2 to register, then confirm the peer appears:
 
 ```bash
-./scripts/wsl/tunnel-start.sh
-```
-
-Creates a reverse SSH tunnel so the EC2 can reach your Chrome at its own localhost:9222.
-
-### 4. Use from the EC2
-
-```bash
-source scripts/remote/cdp-env.sh
-```
-
-Exports `CHROME_CDP_URL` and `BROWSER_WS_ENDPOINT` for Playwright, Puppeteer, or any automation tool.
-
-### 5. Check status
-
-```bash
-# From WSL2 — full dashboard
-./scripts/wsl/status.sh
-
-# From EC2 — CDP health check
-./scripts/remote/cdp-health.sh
-```
-
-### 6. Tear down
-
-```bash
-./scripts/wsl/tunnel-stop.sh    # stop tunnel
-./scripts/wsl/chrome-stop.sh    # stop Chrome
+netbird status --detail | grep cloud-development
 ```
 
 ## Scripts
@@ -81,11 +70,13 @@ Exports `CHROME_CDP_URL` and `BROWSER_WS_ENDPOINT` for Playwright, Puppeteer, or
 
 | Script | Purpose |
 |--------|---------|
+| `start.sh` | Launch Chrome + tunnel (daily driver) |
+| `stop.sh` | Stop tunnel + Chrome |
+| `status.sh` | Dashboard: NetBird, Chrome, CDP, tunnel |
 | `chrome-launch.sh` | Start Chrome with CDP on localhost |
 | `chrome-stop.sh` | Stop automation Chrome |
-| `tunnel-start.sh [ec2_ip]` | Reverse tunnel to EC2 (auto-discovers cloud-development peer) |
+| `tunnel-start.sh [ip]` | Reverse tunnel to EC2 |
 | `tunnel-stop.sh` | Stop the tunnel |
-| `status.sh` | Dashboard: NetBird, Chrome, CDP, tunnel |
 
 ### Remote (EC2)
 
@@ -97,8 +88,8 @@ Exports `CHROME_CDP_URL` and `BROWSER_WS_ENDPOINT` for Playwright, Puppeteer, or
 ## Security
 
 - Chrome binds to localhost only
-- CDP is only reachable through the SSH tunnel over NetBird
+- CDP reachable only through SSH tunnel over NetBird
 - EC2 security group allows no inbound traffic
-- NetBird setup key is marked `sensitive` in Terraform
+- NetBird setup key marked `sensitive` in Terraform
 
 CDP provides unauthenticated browser access. Security relies on NetBird network isolation and SSH tunnel encryption.
