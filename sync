@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+# Sync code and dotfiles to EC2 (per-machine isolation).
+# Run from any directory after cloning the repo.
+exec "$(dirname "$0")/scripts/wsl/sync.sh" "$@"

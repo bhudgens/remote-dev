@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+# Start everything: Chrome + tunnel + code relay.
+# Run from any directory after cloning the repo.
+exec "$(dirname "$0")/scripts/wsl/start.sh" "$@"

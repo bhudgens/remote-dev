@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+# SSH to EC2 and become bhudgens (proper systemd session).
+# Run from any directory after cloning the repo.
+exec "$(dirname "$0")/scripts/wsl/ssh.sh" "$@"
