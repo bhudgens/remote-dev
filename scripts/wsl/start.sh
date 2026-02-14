@@ -35,7 +35,11 @@ bash "$SCRIPT_DIR/tunnel-start.sh" "$EC2_IP" >"$LOG_DIR/tunnel.log" 2>&1 || {
 bash "$SCRIPT_DIR/code-relay.sh" "$EC2_IP" >"$LOG_DIR/code-relay.log" 2>&1 &
 log_info "Code relay started (PID: $!)"
 
-# 4. Show status
+# 4. Sync code and dotfiles to EC2
+log_info "Syncing to EC2..."
+bash "$SCRIPT_DIR/sync.sh" >"$LOG_DIR/sync.log" 2>&1 || log_warn "Sync failed. See $LOG_DIR/sync.log"
+
+# 5. Show status
 bash "$SCRIPT_DIR/status.sh" 2>&1
 echo ""
 echo "Logs: $LOG_DIR/"
