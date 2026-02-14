@@ -1,0 +1,21 @@
+#!/bin/bash
+# VS Code relay — opens a file/directory in VS Code on your workstation.
+# Sends the resolved path back through the reverse SSH tunnel to the
+# code-relay listener running on WSL2.
+#
+# Usage: code [path]
+#   path: file or directory to open (default: current directory)
+#
+# Requires: reverse tunnel with code relay port (started by start.sh)
+
+CODE_RELAY_PORT=9223
+
+path=$(realpath "${1:-.}")
+
+echo "$path" | nc -q 0 localhost $CODE_RELAY_PORT 2>/dev/null || {
+    echo "Error: VS Code relay not available. Is the tunnel running on your workstation?"
+    echo "  Run: ./scripts/wsl/start.sh"
+    exit 1
+}
+
+echo "Opening in VS Code: $path"

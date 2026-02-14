@@ -85,4 +85,20 @@ else
 fi
 
 echo ""
+
+# ── Code Relay ─────────────────────────────────────────────────────────────
+
+printf "%-20s" "Code Relay:"
+
+LOG_DIR="${TMPDIR:-/tmp}/remote-dev"
+RELAY_PID_FILE="${LOG_DIR}/code-relay.pid"
+
+if [[ -f "$RELAY_PID_FILE" ]] && kill -0 "$(cat "$RELAY_PID_FILE")" 2>/dev/null; then
+    RELAY_PID=$(cat "$RELAY_PID_FILE")
+    echo "Active  (PID: $RELAY_PID, port: ${CODE_RELAY_PORT:-9223})"
+else
+    echo "NOT RUNNING  (use start.sh)"
+fi
+
+echo ""
 echo "══════════════════════════════════════════════════"

@@ -43,11 +43,14 @@ fi
 
 # ── Create reverse SSH tunnel ────────────────────────────────────────────────
 
+CODE_RELAY_PORT="${CODE_RELAY_PORT:-9223}"
+
 log_info "Creating reverse tunnel: EC2(localhost:${CDP_PORT}) -> local Chrome CDP"
-log_info "  ssh -R ${CDP_PORT}:localhost:${CDP_PORT} ${SSH_USER}@${EC2_IP}"
+log_info "  + code relay on port ${CODE_RELAY_PORT}"
 
 ssh -o StrictHostKeyChecking=no -f -N \
     -R "${CDP_PORT}:localhost:${CDP_PORT}" \
+    -R "${CODE_RELAY_PORT}:localhost:${CODE_RELAY_PORT}" \
     "${SSH_USER}@${EC2_IP}" || {
     log_error "Failed to create tunnel to ${SSH_USER}@${EC2_IP}"
     exit 1
