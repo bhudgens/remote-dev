@@ -78,6 +78,8 @@ NetBird's embedded SSH server runs on port 22022 with transparent redirect from 
 
 In practice, regular SSH (not `netbird ssh`) works for tunnels and VS Code over the NetBird mesh.
 
+**Limitation:** NetBird's SSH server does NOT support multiple `-R` ports on a single connection. Each reverse tunnel port needs its own SSH connection. This is why the CDP tunnel (9222) and code relay tunnel (9223) use separate SSH processes.
+
 ## Script Layout
 
 - `scripts/config.env` — Shared configuration (ports, paths, peer name)
@@ -115,3 +117,4 @@ source scripts/remote/cdp-env.sh  # load CDP env vars for automation
 - **Stale NetBird peers**: When EC2 is rebuilt, the old peer stays in NetBird management. Delete stale peers from the NetBird dashboard and rename the new peer to `cloud-development`.
 - **user_data_replace_on_change**: Updating user-data in Terraform destroys and recreates the instance. A new NetBird setup key is needed.
 - **keyme required for VS Code**: VS Code Remote-SSH won't work until `keyme` is run on the EC2 as bhudgens (builds authorized_keys).
+- **NetBird multi-port limitation**: NetBird SSH doesn't support multiple `-R` ports per connection. Each port needs a separate SSH process.
