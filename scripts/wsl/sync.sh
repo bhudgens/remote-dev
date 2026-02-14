@@ -1,8 +1,10 @@
 #!/usr/bin/env bash
-# Sync local $HOME/reverts to the remote EC2's /home/bhudgens/reverts.
-# Run from WSL2 on any workstation. Auto-discovers EC2 via NetBird.
+# Sync this workstation's code and config to the remote EC2.
+# Each machine gets its own directory to avoid collisions:
+#   /home/bhudgens/machines/<machine-name>/reverts/
+#   /home/bhudgens/machines/<machine-name>/dotfiles/
 #
-# SSH is via ubuntu, files are written as root (sudo rsync) then chowned to bhudgens.
+# Run from WSL2 on any workstation. Auto-discovers EC2 via NetBird.
 #
 # Usage: sync.sh [ec2_netbird_ip]
 
@@ -13,9 +15,14 @@ source "$SCRIPT_DIR/../config.env"
 source "$SCRIPT_DIR/../lib.sh"
 
 EC2_IP="${1:-}"
-LOCAL_DIR="$HOME/reverts"
 REMOTE_USER="$EC2_SSH_USER"
-REMOTE_DIR="/home/bhudgens/reverts"
+
+# ── Identify this machine ────────────────────────────────────────────────────
+
+MACHINE_NAME=$(hostname | tr '[:upper:]' '[:lower:]')
+REMOTE_BASE="/home/bhudgens/machines/${MACHINE_NAME}"
+
+log_info "Machine: $MACHINE_NAME"
 
 # ── Discover EC2 ─────────────────────────────────────────────────────────────
 
@@ -25,37 +32,75 @@ if [[ -z "$EC2_IP" ]]; then
     log_info "Found $EC2_PEER_NAME at $EC2_IP"
 fi
 
-# ── Validate local dir ───────────────────────────────────────────────────────
+SSH_CMD="ssh -o StrictHostKeyChecking=no"
+SSH_TARGET="${REMOTE_USER}@${EC2_IP}"
 
-if [[ ! -d "$LOCAL_DIR" ]]; then
-    log_error "$LOCAL_DIR does not exist"
-    exit 1
+# ── Create remote directories ────────────────────────────────────────────────
+
+$SSH_CMD "$SSH_TARGET" "sudo mkdir -p ${REMOTE_BASE}/{reverts,dotfiles} && sudo chown -R bhudgens:bhudgens /home/bhudgens/machines"
+
+# ── Common rsync excludes ────────────────────────────────────────────────────
+
+EXCLUDES=(
+    --exclude '.git'
+    --exclude 'node_modules'
+    --exclude '.next'
+    --exclude '__pycache__'
+    --exclude '.venv'
+    --exclude 'venv'
+    --exclude '.terraform'
+    --exclude '*.tfstate'
+    --exclude '*.tfstate.backup'
+    --exclude '.terraform.lock.hcl'
+    --exclude '.cache'
+    --exclude 'dist'
+    --exclude 'build'
+)
+
+# ── Sync code ────────────────────────────────────────────────────────────────
+
+if [[ -d "$HOME/reverts" ]]; then
+    log_info "Syncing ~/reverts -> ${REMOTE_BASE}/reverts/"
+    rsync -avz --delete \
+        "${EXCLUDES[@]}" \
+        -e "$SSH_CMD" \
+        --rsync-path="sudo rsync" \
+        "$HOME/reverts/" \
+        "${SSH_TARGET}:${REMOTE_BASE}/reverts/"
 fi
 
-# ── Sync ─────────────────────────────────────────────────────────────────────
+# ── Sync dotfiles / configs ──────────────────────────────────────────────────
 
-log_info "Syncing $LOCAL_DIR -> ${REMOTE_USER}@${EC2_IP}:${REMOTE_DIR}"
+DOTFILES=(
+    .claude
+)
 
-rsync -avz --delete \
-    --exclude '.git' \
-    --exclude 'node_modules' \
-    --exclude '.next' \
-    --exclude '__pycache__' \
-    --exclude '.venv' \
-    --exclude 'venv' \
-    --exclude '.terraform' \
-    --exclude '*.tfstate' \
-    --exclude '*.tfstate.backup' \
-    --exclude '.terraform.lock.hcl' \
-    -e "ssh -o StrictHostKeyChecking=no" \
-    --rsync-path="sudo rsync" \
-    "$LOCAL_DIR/" \
-    "${REMOTE_USER}@${EC2_IP}:${REMOTE_DIR}/"
+log_info "Syncing dotfiles -> ${REMOTE_BASE}/dotfiles/"
 
-# ── Fix ownership ───────────────────────────────────────────────────────────
+for dotfile in "${DOTFILES[@]}"; do
+    src="$HOME/$dotfile"
+    if [[ -e "$src" ]]; then
+        # Preserve directory structure
+        dest_dir="${REMOTE_BASE}/dotfiles/$(dirname "$dotfile")"
+        $SSH_CMD "$SSH_TARGET" "sudo mkdir -p '$dest_dir'"
+        rsync -avz \
+            -e "$SSH_CMD" \
+            --rsync-path="sudo rsync" \
+            "$src" \
+            "${SSH_TARGET}:${REMOTE_BASE}/dotfiles/${dotfile}"
+    fi
+done
 
-log_info "Fixing ownership to bhudgens..."
-ssh -o StrictHostKeyChecking=no "${REMOTE_USER}@${EC2_IP}" \
-    "sudo chown -R bhudgens:bhudgens ${REMOTE_DIR}"
+# ── Fix ownership ────────────────────────────────────────────────────────────
 
-log_info "Sync complete: ${REMOTE_DIR} on $EC2_PEER_NAME"
+log_info "Fixing ownership..."
+$SSH_CMD "$SSH_TARGET" "sudo chown -R bhudgens:bhudgens /home/bhudgens/machines"
+
+# ── Summary ──────────────────────────────────────────────────────────────────
+
+log_info "Sync complete: ${REMOTE_BASE}/"
+log_info ""
+log_info "On the EC2 as bhudgens:"
+log_info "  ls ~/machines/                    # see all synced machines"
+log_info "  ls ~/machines/${MACHINE_NAME}/reverts/  # this machine's code"
+log_info "  ls ~/machines/${MACHINE_NAME}/dotfiles/ # this machine's configs"
