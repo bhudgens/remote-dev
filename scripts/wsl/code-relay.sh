@@ -59,6 +59,6 @@ while true; do
 
     if [[ -n "$path" ]]; then
         log_info "Opening in VS Code: ${path}"
-        code --remote "ssh-remote+bhudgens@${EC2_IP}" "$path" &>/dev/null &
+        code --folder-uri "vscode-remote://ssh-remote+bhudgens@${EC2_IP}${path}" &>/dev/null &
     fi
 done
