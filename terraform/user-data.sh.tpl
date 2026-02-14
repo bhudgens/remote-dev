@@ -17,7 +17,7 @@ echo "bhudgens ALL=(ALL) NOPASSWD:ALL" > /etc/sudoers.d/bhudgens
 # ── System packages ──────────────────────────────────────────────────────────
 
 apt-get update
-apt-get install -y curl jq git
+apt-get install -y curl jq git systemd-container
 
 # ── Install NetBird ──────────────────────────────────────────────────────────
 
@@ -33,6 +33,15 @@ netbird up \
   --enable-ssh-remote-port-forwarding \
   --enable-ssh-sftp \
   --hostname "${hostname}"
+
+# ── Convenience script for ubuntu to switch to bhudgens ─────────────────────
+
+cat > /home/ubuntu/become-bhudgens.sh << 'BECOME'
+#!/bin/bash
+exec sudo machinectl shell bhudgens@
+BECOME
+chmod 755 /home/ubuntu/become-bhudgens.sh
+chown ubuntu:ubuntu /home/ubuntu/become-bhudgens.sh
 
 # ── Install VS Code relay wrapper ─────────────────────────────────────────────
 
