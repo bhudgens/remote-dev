@@ -36,21 +36,16 @@ fi
 
 if pgrep -f "ssh.*-R.*${CDP_PORT}:localhost:${CDP_PORT}.*${EC2_IP}" >/dev/null 2>&1; then
     EXISTING_PID=$(pgrep -f "ssh.*-R.*${CDP_PORT}:localhost:${CDP_PORT}.*${EC2_IP}" | head -1)
-    log_warn "Tunnel to ${EC2_IP} already running (PID: $EXISTING_PID)"
-    log_info "Use tunnel-stop.sh to stop it first"
-    exit 1
+    log_info "Tunnel to ${EC2_IP} already running (PID: $EXISTING_PID)"
+    exit 0
 fi
 
 # ── Create reverse SSH tunnel ────────────────────────────────────────────────
 
-CODE_RELAY_PORT="${CODE_RELAY_PORT:-9223}"
-
 log_info "Creating reverse tunnel: EC2(localhost:${CDP_PORT}) -> local Chrome CDP"
-log_info "  + code relay on port ${CODE_RELAY_PORT}"
 
 ssh -o StrictHostKeyChecking=no -f -N \
     -R "${CDP_PORT}:localhost:${CDP_PORT}" \
-    -R "${CODE_RELAY_PORT}:localhost:${CODE_RELAY_PORT}" \
     "${SSH_USER}@${EC2_IP}" || {
     log_error "Failed to create tunnel to ${SSH_USER}@${EC2_IP}"
     exit 1
