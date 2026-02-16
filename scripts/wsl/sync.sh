@@ -42,7 +42,6 @@ $SSH_CMD "$SSH_TARGET" "sudo mkdir -p ${REMOTE_BASE}/{reverts,dotfiles} && sudo 
 # ── Common rsync excludes ────────────────────────────────────────────────────
 
 EXCLUDES=(
-    --exclude '.git'
     --exclude 'node_modules'
     --exclude '.next'
     --exclude '__pycache__'
