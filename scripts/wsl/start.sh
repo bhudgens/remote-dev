@@ -23,23 +23,48 @@ if [[ -z "$EC2_IP" ]]; then
 fi
 
 # 1. Launch Chrome (skip if already running)
-bash "$SCRIPT_DIR/chrome-launch.sh" >"$LOG_DIR/chrome.log" 2>&1 || true
+log_info "Step 1/4: Launching Chrome with CDP..."
+if ! bash "$SCRIPT_DIR/chrome-launch.sh" >"$LOG_DIR/chrome.log" 2>&1; then
+    log_error "Chrome launch failed. Error details:"
+    echo "─────────────────────────────────────────────────────────────────────"
+    tail -10 "$LOG_DIR/chrome.log"
+    echo "─────────────────────────────────────────────────────────────────────"
+    log_error "Full log: $LOG_DIR/chrome.log"
+    exit 1
+fi
 
 # 2. Start tunnel (pass discovered IP)
-bash "$SCRIPT_DIR/tunnel-start.sh" "$EC2_IP" >"$LOG_DIR/tunnel.log" 2>&1 || {
-    echo "Tunnel failed. See $LOG_DIR/tunnel.log"
+log_info "Step 2/4: Creating reverse SSH tunnel..."
+if ! bash "$SCRIPT_DIR/tunnel-start.sh" "$EC2_IP" >"$LOG_DIR/tunnel.log" 2>&1; then
+    log_error "Tunnel creation failed. Error details:"
+    echo "─────────────────────────────────────────────────────────────────────"
+    tail -10 "$LOG_DIR/tunnel.log"
+    echo "─────────────────────────────────────────────────────────────────────"
+    log_error "Full log: $LOG_DIR/tunnel.log"
     exit 1
-}
+fi
 
 # 3. Start code relay (background)
+log_info "Step 3/4: Starting VS Code relay..."
 bash "$SCRIPT_DIR/code-relay.sh" "$EC2_IP" >"$LOG_DIR/code-relay.log" 2>&1 &
 log_info "Code relay started (PID: $!)"
 
 # 4. Sync code and dotfiles to EC2
-log_info "Syncing to EC2..."
-bash "$SCRIPT_DIR/sync.sh" >"$LOG_DIR/sync.log" 2>&1 || log_warn "Sync failed. See $LOG_DIR/sync.log"
+log_info "Step 4/4: Syncing to EC2..."
+if ! bash "$SCRIPT_DIR/sync.sh" >"$LOG_DIR/sync.log" 2>&1; then
+    log_warn "Sync failed. Error details:"
+    echo "─────────────────────────────────────────────────────────────────────"
+    tail -10 "$LOG_DIR/sync.log"
+    echo "─────────────────────────────────────────────────────────────────────"
+    log_warn "Full log: $LOG_DIR/sync.log"
+    log_warn "Continuing despite sync failure..."
+fi
 
 # 5. Show status
-bash "$SCRIPT_DIR/status.sh" 2>&1
 echo ""
-echo "Logs: $LOG_DIR/"
+log_info "Startup complete! Current status:"
+echo "─────────────────────────────────────────────────────────────────────"
+bash "$SCRIPT_DIR/status.sh" 2>&1
+echo "─────────────────────────────────────────────────────────────────────"
+echo ""
+log_info "Logs available at: $LOG_DIR/"

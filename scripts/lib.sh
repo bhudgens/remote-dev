@@ -99,11 +99,51 @@ get_peer_ip() {
 # Resolve Windows %LOCALAPPDATA% from WSL2
 get_chrome_localappdata() {
     local localappdata
-    localappdata=$(cmd.exe /C "echo %LOCALAPPDATA%" 2>/dev/null | tr -d '\r')
+    local CMD_EXE="/mnt/c/Windows/System32/cmd.exe"
 
+    # Try via cmd.exe first (direct path, not relying on PATH)
+    # Note: cmd.exe may output UNC warnings to stderr, the actual value is on the last line
+    if [[ -f "$CMD_EXE" ]]; then
+        localappdata=$("$CMD_EXE" /C "echo %LOCALAPPDATA%" 2>&1 | tail -1 | tr -d '\r\n')
+    fi
+
+    # If that fails or returns unexpanded variable, try fallbacks
     if [[ -z "$localappdata" || "$localappdata" == "%LOCALAPPDATA%" ]]; then
-        log_error "Could not resolve Windows LOCALAPPDATA"
-        return 1
+        log_warn "Could not resolve LOCALAPPDATA via cmd.exe, trying fallbacks..."
+
+        # Try getting Windows username
+        local win_username
+        if [[ -f "$CMD_EXE" ]]; then
+            win_username=$("$CMD_EXE" /C "echo %USERNAME%" 2>/dev/null | tr -d '\r\n')
+        fi
+
+        if [[ -n "$win_username" && "$win_username" != "%USERNAME%" ]]; then
+            localappdata="C:\\Users\\${win_username}\\AppData\\Local"
+            log_info "Using fallback LOCALAPPDATA: $localappdata"
+        else
+            # Last resort: construct from WSL home
+            local wsl_home_win
+            wsl_home_win=$(wslpath -w ~ 2>/dev/null | tr -d '\r\n')
+            if [[ -n "$wsl_home_win" ]]; then
+                # Extract username from path like C:\Users\username\... or \\wsl.localhost\...
+                win_username=$(echo "$wsl_home_win" | grep -oP 'C:\\\\Users\\\K[^\\]+' | head -1)
+                if [[ -z "$win_username" ]]; then
+                    # Try \\wsl.localhost\distro\home\username format
+                    # Just use the Linux username as a guess
+                    win_username=$(whoami)
+                fi
+                if [[ -n "$win_username" ]]; then
+                    localappdata="C:\\Users\\${win_username}\\AppData\\Local"
+                    log_info "Using fallback LOCALAPPDATA (from user: $win_username): $localappdata"
+                fi
+            fi
+        fi
+
+        if [[ -z "$localappdata" ]]; then
+            log_error "Could not resolve Windows LOCALAPPDATA"
+            log_error "Tried: cmd.exe, USERNAME, wslpath"
+            return 1
+        fi
     fi
 
     echo "$localappdata"

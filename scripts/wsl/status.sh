@@ -19,6 +19,9 @@ echo ""
 
 # ── NetBird ──────────────────────────────────────────────────────────────────
 
+NETBIRD_EXE="${NETBIRD_EXE:-/mnt/c/Program Files/NetBird/netbird.exe}"
+POWERSHELL_EXE="/mnt/c/Windows/System32/WindowsPowerShell/v1.0/powershell.exe"
+
 printf "%-20s" "NetBird:"
 
 NETBIRD_IP=$(get_netbird_ip 2>/dev/null) && {
@@ -29,7 +32,7 @@ NETBIRD_IP=$(get_netbird_ip 2>/dev/null) && {
 }
 
 if [[ -n "$NETBIRD_IP" ]]; then
-    PEER_COUNT=$("${NETBIRD_EXE:-/mnt/c/Program Files/NetBird/netbird.exe}" status 2>/dev/null \
+    PEER_COUNT=$("$NETBIRD_EXE" status 2>/dev/null \
         | grep -c "Connected" || echo "0")
     printf "%-20s%s\n" "" "Peers connected: $PEER_COUNT"
 fi
@@ -40,7 +43,7 @@ echo ""
 
 printf "%-20s" "Chrome:"
 
-CHROME_RUNNING=$(powershell.exe -NoProfile -Command \
+CHROME_RUNNING=$("$POWERSHELL_EXE" -NoProfile -Command \
     "Get-CimInstance Win32_Process -Filter \"Name='chrome.exe'\" | Where-Object { \$_.CommandLine -match '$CHROME_USER_DATA_DIR' } | Measure-Object | Select-Object -ExpandProperty Count" 2>/dev/null | tr -d '\r')
 
 if [[ -n "$CHROME_RUNNING" && "$CHROME_RUNNING" != "0" ]]; then

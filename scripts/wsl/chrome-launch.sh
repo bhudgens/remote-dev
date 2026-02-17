@@ -15,18 +15,29 @@ CDP_PORT="${1:-$CDP_PORT}"
 
 # ── Pre-flight checks ───────────────────────────────────────────────────────
 
-# Check if automation Chrome is already running
-if powershell.exe -NoProfile -Command \
-    "Get-CimInstance Win32_Process -Filter \"Name='chrome.exe'\" | Where-Object { \$_.CommandLine -match '$CHROME_USER_DATA_DIR' }" 2>/dev/null | grep -q .; then
-    log_warn "Automation Chrome is already running (user-data-dir: $CHROME_USER_DATA_DIR)"
-    log_info "Use chrome-stop.sh to stop it first, or connect to the existing instance"
+# Check if Chrome executable exists
+if [[ ! -f "$CHROME_PATH" ]]; then
+    log_error "Chrome executable not found at: $CHROME_PATH"
+    log_error "Please update CHROME_PATH in scripts/config.env"
     exit 1
+fi
+
+# Check if automation Chrome is already running
+POWERSHELL_EXE="/mnt/c/Windows/System32/WindowsPowerShell/v1.0/powershell.exe"
+if [[ -f "$POWERSHELL_EXE" ]] && "$POWERSHELL_EXE" -NoProfile -Command \
+    "Get-CimInstance Win32_Process -Filter \"Name='chrome.exe'\" | Where-Object { \$_.CommandLine -match '$CHROME_USER_DATA_DIR' }" 2>/dev/null | grep -q .; then
+    log_info "Automation Chrome is already running (user-data-dir: $CHROME_USER_DATA_DIR)"
+    exit 0
 fi
 
 # ── Resolve Windows paths ───────────────────────────────────────────────────
 
 log_info "Resolving Windows LOCALAPPDATA..."
-LOCALAPPDATA=$(get_chrome_localappdata) || exit 1
+LOCALAPPDATA=$(get_chrome_localappdata) || {
+    log_error "Failed to resolve LOCALAPPDATA. Cannot determine Chrome profile directory."
+    log_error "This usually means Windows environment variables are not accessible from WSL."
+    exit 1
+}
 USER_DATA_PATH="${LOCALAPPDATA}\\${CHROME_USER_DATA_DIR}"
 log_info "Chrome user data dir: $USER_DATA_PATH"
 
@@ -62,4 +73,9 @@ done
 
 echo ""
 log_error "CDP did not respond within ${MAX_WAIT}s at 127.0.0.1:${CDP_PORT}"
+log_error "Chrome may have failed to start. Possible causes:"
+log_error "  - Chrome executable not found (check CHROME_PATH in config.env)"
+log_error "  - Chrome crashed on startup"
+log_error "  - Port ${CDP_PORT} already in use"
+log_error "Check Windows Task Manager to see if chrome.exe is running"
 exit 1

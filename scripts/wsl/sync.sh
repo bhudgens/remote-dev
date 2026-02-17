@@ -58,7 +58,7 @@ EXCLUDES=(
 
 # ── Sync code ────────────────────────────────────────────────────────────────
 
-if [[ -d "$HOME/reverts" ]]; then
+if false && [[ -d "$HOME/reverts" ]]; then
     log_info "Syncing ~/reverts -> ${REMOTE_BASE}/reverts/"
     rsync -avz --delete \
         "${EXCLUDES[@]}" \
@@ -78,7 +78,7 @@ log_info "Syncing dotfiles -> ${REMOTE_BASE}/dotfiles/"
 
 for dotfile in "${DOTFILES[@]}"; do
     src="$HOME/$dotfile"
-    if [[ -e "$src" ]]; then
+    if false && [[ -e "$src" ]]; then
         # Preserve directory structure
         dest_dir="${REMOTE_BASE}/dotfiles/$(dirname "$dotfile")"
         $SSH_CMD "$SSH_TARGET" "sudo mkdir -p '$dest_dir'"
