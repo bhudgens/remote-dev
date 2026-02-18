@@ -63,7 +63,7 @@ Each workstation syncs to its own directory on the EC2 to avoid collisions:
 - **Subnet**: `cloud-development-public` (looked up by Name tag)
 - **SSH key**: `remote-dev-key` (imported from local ~/.ssh/id_rsa)
 - **NetBird management**: https://netbird.hudgenda.com:443
-- **Instance type**: t3.medium (Ubuntu 24.04 LTS)
+- **Instance type**: t3.xlarge (Ubuntu 24.04 LTS)
 - **IaC**: OpenTofu (`tofu`, not `terraform`)
 
 ## NetBird SSH

@@ -6,7 +6,7 @@ netbird_management_url = ""  # e.g. "https://netbird.example.com:443"
 
 # Optional overrides:
 # instance_name  = "cloud-development"
-# instance_type  = "t3.medium"
+# instance_type  = "t3.xlarge"
 # vpc_name       = "cloud-development-vpc"
 # subnet_name    = "cloud-development-public"
 # key_name       = "remote-dev-key"
