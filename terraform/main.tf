@@ -61,6 +61,13 @@ resource "aws_instance" "remote_dev" {
     volume_type = "gp3"
   }
 
+  lifecycle {
+    ignore_changes = [
+      ami,       # don't replace when a newer Ubuntu AMI is released
+      user_data, # don't replace when user-data template changes
+    ]
+  }
+
   tags = merge(var.tags, {
     Name = var.instance_name
   })

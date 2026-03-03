@@ -48,7 +48,7 @@ chown ubuntu:ubuntu /home/ubuntu/become-bhudgens.sh
 cat > /usr/local/bin/code << 'CODESCRIPT'
 #!/bin/bash
 CODE_RELAY_PORT=9223
-path=$(realpath "${1:-.}")
+path=$(realpath "$${1:-.}")
 echo "$path" | nc -q 0 localhost $CODE_RELAY_PORT 2>/dev/null || {
     echo "Error: VS Code relay not available. Is the tunnel running on your workstation?"
     echo "  Run: ./scripts/wsl/start.sh"
