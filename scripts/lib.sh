@@ -43,14 +43,31 @@ require_commands() {
 
 # ── NetBird ──────────────────────────────────────────────────────────────────
 
+# Resolve the netbird executable: prefer NETBIRD_EXE, then the Windows exe,
+# then fall back to a native 'netbird' binary on Linux.
+_resolve_netbird_exe() {
+    local windows_exe="${NETBIRD_EXE:-/mnt/c/Program Files/NetBird/netbird.exe}"
+
+    if [[ -f "$windows_exe" ]]; then
+        echo "$windows_exe"
+        return 0
+    fi
+
+    local linux_bin
+    linux_bin=$(command -v netbird 2>/dev/null) || true
+    if [[ -n "$linux_bin" ]]; then
+        echo "$linux_bin"
+        return 0
+    fi
+
+    log_error "NetBird executable not found (tried: $windows_exe, netbird in PATH)"
+    return 1
+}
+
 # Discover the local NetBird IP address (runs netbird.exe on Windows side)
 get_netbird_ip() {
-    local netbird_exe="${NETBIRD_EXE:-/mnt/c/Program Files/NetBird/netbird.exe}"
-
-    if [[ ! -f "$netbird_exe" ]]; then
-        log_error "NetBird executable not found at: $netbird_exe"
-        return 1
-    fi
+    local netbird_exe
+    netbird_exe=$(_resolve_netbird_exe) || return 1
 
     local status_output
     status_output=$("$netbird_exe" status 2>/dev/null) || {
@@ -78,7 +95,8 @@ get_netbird_ip() {
 # Usage: get_peer_ip <peer_name>
 get_peer_ip() {
     local peer_name="$1"
-    local netbird_exe="${NETBIRD_EXE:-/mnt/c/Program Files/NetBird/netbird.exe}"
+    local netbird_exe
+    netbird_exe=$(_resolve_netbird_exe) || return 1
 
     local ip
     ip=$("$netbird_exe" status --detail 2>/dev/null \
